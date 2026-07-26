@@ -11,7 +11,7 @@ Dashboard somente leitura para acompanhar o servidor dedicado **Manapal**.
 - dias do mundo e bases ativas;
 - nome, conta, nível e ping dos jogadores;
 - histórico aproximado de horas observadas por jogador;
-- gráfico de nível por horas jogadas e ranking de nível.
+- gráfico de linhas da evolução de nível por horas observadas e ranking de nível.
 
 IPs, IDs e coordenadas recebidos da API do Palworld são descartados pelo
 backend e nunca chegam ao navegador.

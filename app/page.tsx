@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type Player = {
   name: string;
@@ -16,6 +23,14 @@ type HistoricalPlayer = {
   hoursPlayed: number;
   firstSeen: number;
   lastSeen: number;
+};
+
+type HistoricalPoint = {
+  name: string;
+  accountName: string;
+  sampledAt: number;
+  level: number;
+  hoursPlayed: number;
 };
 
 type DashboardData = {
@@ -42,6 +57,7 @@ type DashboardData = {
 
 type HistoryData = {
   players: HistoricalPlayer[];
+  progress: HistoricalPoint[];
   trackingSince: string | null;
   collectedAt: string | null;
   sampleIntervalMinutes: number;
@@ -88,6 +104,16 @@ function formatTrackingDate(value?: string | null) {
   }).format(new Date(value));
 }
 
+function formatSampleDate(timestamp = 0) {
+  if (!timestamp) return "aguardando";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(timestamp * 1_000));
+}
+
 function StatCard({
   label,
   value,
@@ -108,21 +134,158 @@ function StatCard({
   );
 }
 
-function ProgressChart({ players }: { players: HistoricalPlayer[] }) {
-  const maxHours = Math.max(1, ...players.map((player) => player.hoursPlayed));
-  const maxLevel = Math.max(1, ...players.map((player) => player.level));
-  const levelTicks = [maxLevel, Math.round(maxLevel / 2), 0];
+function ProgressChart({
+  players,
+  points,
+}: {
+  players: HistoricalPlayer[];
+  points: HistoricalPoint[];
+}) {
+  const plotRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const series = useMemo(() => {
+    const keyFor = (name: string, accountName: string) =>
+      `${name}\u0000${accountName}`;
+    const grouped = new Map<string, HistoricalPoint[]>();
+
+    for (const point of points) {
+      const key = keyFor(point.name, point.accountName);
+      const playerPoints = grouped.get(key) ?? [];
+      playerPoints.push(point);
+      grouped.set(key, playerPoints);
+    }
+
+    const playerKeys = players.map((player) =>
+      keyFor(player.name, player.accountName),
+    );
+    const extraKeys = [...grouped.keys()].filter(
+      (key) => !playerKeys.includes(key),
+    );
+
+    return [...playerKeys, ...extraKeys].map((key, index) => {
+      const player = players.find(
+        (candidate) => keyFor(candidate.name, candidate.accountName) === key,
+      );
+      const recorded = [...(grouped.get(key) ?? [])].sort(
+        (a, b) => a.sampledAt - b.sampledAt,
+      );
+      const fallback = player
+        ? [
+            {
+              name: player.name,
+              accountName: player.accountName,
+              sampledAt: player.lastSeen,
+              level: player.level,
+              hoursPlayed: player.hoursPlayed,
+            },
+          ]
+        : [];
+      const seriesPoints = recorded.length > 0 ? recorded : fallback;
+
+      return {
+        key,
+        index,
+        name: player?.name ?? seriesPoints[0]?.name ?? "Jogador",
+        points: seriesPoints,
+        markers: seriesPoints.filter(
+          (point, pointIndex, allPoints) =>
+            pointIndex === 0 ||
+            pointIndex === allPoints.length - 1 ||
+            point.level !== allPoints[pointIndex - 1]?.level,
+        ),
+      };
+    });
+  }, [players, points]);
+  const allPoints = series.flatMap((playerSeries) => playerSeries.points);
+  const maxHours = Math.max(
+    1 / 12,
+    ...players.map((player) => player.hoursPlayed),
+    ...allPoints.map((point) => point.hoursPlayed),
+  );
+  const levels =
+    allPoints.length > 0
+      ? allPoints.map((point) => point.level)
+      : players.map((player) => player.level);
+  const observedMinLevel = Math.min(...levels);
+  const observedMaxLevel = Math.max(...levels);
+  const levelPadding =
+    observedMaxLevel === observedMinLevel
+      ? 1
+      : Math.max(1, Math.ceil((observedMaxLevel - observedMinLevel) * 0.12));
+  const minLevel = Math.max(0, observedMinLevel - levelPadding);
+  const maxLevel = Math.max(minLevel + 1, observedMaxLevel + levelPadding);
+  const levelRange = maxLevel - minLevel;
+  const levelTicks = [
+    maxLevel,
+    Math.round((maxLevel + minLevel) / 2),
+    minLevel,
+  ];
   const hourTicks = [0, maxHours / 2, maxHours];
+  const positionFor = useCallback(
+    (point: HistoricalPoint) => ({
+      left: 8 + (point.hoursPlayed / maxHours) * 84,
+      bottom: 8 + ((point.level - minLevel) / levelRange) * 80,
+    }),
+    [levelRange, maxHours, minLevel],
+  );
+
+  useEffect(() => {
+    const plot = plotRef.current;
+    const canvas = canvasRef.current;
+    if (!plot || !canvas) return;
+
+    const draw = () => {
+      const width = Math.max(1, plot.clientWidth);
+      const height = Math.max(1, plot.clientHeight);
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(width * pixelRatio);
+      canvas.height = Math.round(height * pixelRatio);
+
+      const context = canvas.getContext("2d");
+      if (!context) return;
+      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      context.clearRect(0, 0, width, height);
+      context.lineCap = "round";
+      context.lineJoin = "round";
+
+      for (const playerSeries of series) {
+        if (playerSeries.points.length < 2) continue;
+        context.beginPath();
+        playerSeries.points.forEach((point, index) => {
+          const position = positionFor(point);
+          const x = (position.left / 100) * width;
+          const y = height - (position.bottom / 100) * height;
+          if (index === 0) context.moveTo(x, y);
+          else context.lineTo(x, y);
+        });
+        context.strokeStyle = `hsl(${165 + playerSeries.index * 43} 72% 61%)`;
+        context.lineWidth = 2;
+        context.globalAlpha = 0.86;
+        context.shadowColor = `hsl(${165 + playerSeries.index * 43} 72% 61% / 0.28)`;
+        context.shadowBlur = 8;
+        context.stroke();
+      }
+      context.globalAlpha = 1;
+      context.shadowBlur = 0;
+    };
+
+    draw();
+    const observer = new ResizeObserver(draw);
+    observer.observe(plot);
+    return () => observer.disconnect();
+  }, [positionFor, series]);
 
   return (
     <div className="progress-chart">
       <div className="progress-chart__y-label">Nível</div>
       <div
         className="plot"
+        ref={plotRef}
         role="img"
-        aria-label="Gráfico de dispersão comparando nível e horas observadas de cada jogador"
+        aria-label="Gráfico de linhas mostrando a progressão de nível por horas observadas de cada jogador"
       >
         <div className="plot__grid" aria-hidden="true" />
+        <canvas className="plot__lines" ref={canvasRef} aria-hidden="true" />
         {levelTicks.map((tick, index) => (
           <span
             className="plot__level-tick"
@@ -132,33 +295,34 @@ function ProgressChart({ players }: { players: HistoricalPlayer[] }) {
             {tick}
           </span>
         ))}
-        {players.map((player, index) => {
-          const left = 8 + (player.hoursPlayed / maxHours) * 84;
-          const bottom = 8 + (player.level / maxLevel) * 80;
-
-          return (
-            <span
-              className="plot-point"
-              key={`${player.name}-${player.accountName}`}
-              style={
-                {
-                  left: `${left}%`,
-                  bottom: `${bottom}%`,
-                  "--point-index": index,
-                } as React.CSSProperties
-              }
-              tabIndex={0}
-              aria-label={`${player.name}: nível ${player.level}, ${formatHours(player.hoursPlayed)}`}
-            >
-              <span className="plot-point__core" aria-hidden="true" />
-              <span className="plot-point__tooltip">
-                <strong>{player.name}</strong>
-                <span>Nível {player.level}</span>
-                <span>{formatHours(player.hoursPlayed)}</span>
+        {series.flatMap((playerSeries) =>
+          playerSeries.markers.map((point) => {
+            const position = positionFor(point);
+            return (
+              <span
+                className="plot-point"
+                key={`${playerSeries.key}-${point.sampledAt}`}
+                style={
+                  {
+                    left: `${position.left}%`,
+                    bottom: `${position.bottom}%`,
+                    "--point-index": playerSeries.index,
+                  } as CSSProperties
+                }
+                tabIndex={0}
+                aria-label={`${playerSeries.name}: nível ${point.level}, ${formatHours(point.hoursPlayed)}, em ${formatSampleDate(point.sampledAt)}`}
+              >
+                <span className="plot-point__core" aria-hidden="true" />
+                <span className="plot-point__tooltip">
+                  <strong>{playerSeries.name}</strong>
+                  <span>Nível {point.level}</span>
+                  <span>{formatHours(point.hoursPlayed)}</span>
+                  <span>{formatSampleDate(point.sampledAt)}</span>
+                </span>
               </span>
-            </span>
-          );
-        })}
+            );
+          }),
+        )}
       </div>
       <div className="progress-chart__x-axis" aria-hidden="true">
         {hourTicks.map((tick, index) => (
@@ -167,10 +331,12 @@ function ProgressChart({ players }: { players: HistoricalPlayer[] }) {
       </div>
       <div className="progress-chart__x-label">Horas observadas</div>
       <div className="chart-legend">
-        {players.map((player, index) => (
-          <span key={`${player.name}-${index}`}>
-            <i style={{ "--point-index": index } as React.CSSProperties} />
-            {player.name}
+        {series.map((playerSeries) => (
+          <span key={playerSeries.key}>
+            <i
+              style={{ "--point-index": playerSeries.index } as CSSProperties}
+            />
+            {playerSeries.name}
           </span>
         ))}
       </div>
@@ -208,6 +374,7 @@ export default function Home() {
     } catch {
       setHistory({
         players: [],
+        progress: [],
         trackingSince: null,
         collectedAt: null,
         sampleIntervalMinutes: 5,
@@ -398,13 +565,16 @@ export default function Home() {
               <div className="card-heading">
                 <div>
                   <strong>Progressão dos jogadores</strong>
-                  <span>Cada ponto representa um jogador registrado</span>
+                  <span>Cada linha acompanha o nível ao longo do tempo</span>
                 </div>
                 <span className="sample-badge">
                   amostra / {history?.sampleIntervalMinutes ?? 5} min
                 </span>
               </div>
-              <ProgressChart players={historicalPlayers} />
+              <ProgressChart
+                players={historicalPlayers}
+                points={history?.progress ?? []}
+              />
             </article>
 
             <article className="rank-card">
