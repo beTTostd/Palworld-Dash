@@ -14,6 +14,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - /opt/palworld/server/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini:/palworld/PalWorldSettings.ini:ro
+      - ./data:/data:ro
     read_only: true
     tmpfs:
       - /tmp:size=16m
@@ -33,3 +34,31 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+
+  palworld-collector:
+    image: python:3.13-alpine
+    profiles:
+      - collector
+    working_dir: /app
+    user: "999:987"
+    environment:
+      PALWORLD_API_URL: http://host.docker.internal:8212
+      PALWORLD_CONFIG_PATH: /palworld/PalWorldSettings.ini
+      PALWORLD_DATABASE_PATH: /data/palworld.db
+      COLLECTION_INTERVAL_SECONDS: "300"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /opt/palworld/server/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini:/palworld/PalWorldSettings.ini:ro
+      - ./collector:/app:ro
+      - ./data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=8m,uid=999,gid=987
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - python
+      - /app/collect.py
