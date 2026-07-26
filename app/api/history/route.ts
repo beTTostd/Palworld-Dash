@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const execFileAsync = promisify(execFile);
-const DATABASE_PATH = "/data/palworld.db";
+const DATABASE_PATH = "file:/data/palworld.db?mode=ro&immutable=1";
 const PLAYER_QUERY = `
   SELECT
     name,
