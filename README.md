@@ -34,5 +34,6 @@ A dashboard ficará disponível na porta `3000`.
 
 - a aplicação implementa apenas endpoints `GET`;
 - a senha administrativa é lida do arquivo do Palworld montado como somente leitura;
-- o container roda sem privilégios, sem capabilities e com filesystem somente leitura;
+- o container roda com o mesmo UID/GID não-root do arquivo do Palworld, sem
+  capabilities e com filesystem somente leitura;
 - nenhuma credencial é armazenada no repositório ou enviada ao frontend.

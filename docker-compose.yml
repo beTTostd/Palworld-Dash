@@ -4,6 +4,8 @@ services:
       context: .
     container_name: palworld-dash
     restart: unless-stopped
+    # Match the owner of PalWorldSettings.ini while remaining non-root.
+    user: "999:987"
     ports:
       - "3000:3000"
     environment:
@@ -15,7 +17,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=16m
-      - /app/.next/cache:size=32m,uid=1001,gid=1001
+      - /app/.next/cache:size=32m,uid=999,gid=987
     cap_drop:
       - ALL
     security_opt:
