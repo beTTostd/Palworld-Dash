@@ -41,13 +41,25 @@ somente como SHA-256.
 Execute uma primeira coleta:
 
 ```bash
+install -d -o 999 -g 987 -m 0775 data
 docker compose --profile collector run --rm -T palworld-collector
+```
+
+O coletor é executado como o UID/GID `999:987` e o SQLite precisa criar os
+arquivos de journal no diretório `data`. Se o diretório for criado pelo root
+durante o deploy, corrija sua propriedade e permissões antes de habilitar o
+cron:
+
+```bash
+chown 999:987 data
+chmod 0775 data
+chmod 0664 data/palworld.db
 ```
 
 Instale o cron de cinco minutos na VPS:
 
 ```text
-*/5 * * * * root cd /opt/palworld-dash && /usr/bin/flock -n /run/palworld-dash-collector.lock /usr/bin/docker compose --profile collector run --rm -T palworld-collector >> /var/log/palworld-dash-collector.log 2>&1
+*/5 * * * * root cd /opt/palworld-dash && /usr/bin/install -d -o 999 -g 987 -m 0775 data && /usr/bin/flock -n /run/palworld-dash-collector.lock /usr/bin/docker compose --profile collector run --rm -T palworld-collector >> /var/log/palworld-dash-collector.log 2>&1
 ```
 
 As horas são aproximadas a partir das presenças observadas a cada cinco
