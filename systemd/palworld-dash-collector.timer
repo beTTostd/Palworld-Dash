@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Palworld Dash collector every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=palworld-dash-collector.service
+
+[Install]
+WantedBy=timers.target

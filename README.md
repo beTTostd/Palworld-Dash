@@ -11,7 +11,9 @@ Dashboard somente leitura para acompanhar o servidor dedicado **Manapal**.
 - dias do mundo e bases ativas;
 - nome, conta, nível e ping dos jogadores;
 - histórico aproximado de horas observadas por jogador;
-- gráfico de linhas da evolução de nível por horas observadas e ranking de nível.
+- gráfico de linhas da evolução de nível por horas observadas e ranking de nível;
+- perfis de jogador e uma linha do tempo de entradas, saídas e subidas de nível;
+- saúde da coleta, incluindo a última amostra e alertas de atraso.
 
 IPs, IDs e coordenadas recebidos da API do Palworld são descartados pelo
 backend e nunca chegam ao navegador.
@@ -63,7 +65,26 @@ Instale o cron de cinco minutos na VPS:
 ```
 
 As horas são aproximadas a partir das presenças observadas a cada cinco
-minutos e começam a contar apenas depois da instalação do coletor.
+minutos e começam a contar apenas depois da instalação do coletor. As amostras
+detalhadas são mantidas por 30 dias (`RAW_RETENTION_DAYS`); o painel preserva
+um ponto agregado por dia para manter o histórico de longo prazo compacto.
+
+### Timer recomendado (systemd)
+
+Em servidores com systemd, prefira o timer incluído ao cron. Ele persiste
+execuções perdidas durante reinicializações e deixa os logs disponíveis pelo
+journal:
+
+```bash
+cp systemd/palworld-dash-collector.service /etc/systemd/system/
+cp systemd/palworld-dash-collector.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now palworld-dash-collector.timer
+systemctl list-timers palworld-dash-collector.timer
+```
+
+A saúde do coletor fica disponível em `/api/health`; uma coleta com mais de
+10 minutos é marcada como atrasada.
 
 ## Segurança
 

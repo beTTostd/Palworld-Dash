@@ -17,6 +17,7 @@ type Player = {
 };
 
 type HistoricalPlayer = {
+  playerKey: string;
   name: string;
   accountName: string;
   level: number;
@@ -26,6 +27,7 @@ type HistoricalPlayer = {
 };
 
 type HistoricalPoint = {
+  playerKey: string;
   name: string;
   accountName: string;
   sampledAt: number;
@@ -61,6 +63,8 @@ type HistoryData = {
   trackingSince: string | null;
   collectedAt: string | null;
   sampleIntervalMinutes: number;
+  events?: Array<{ occurredAt: number; playerKey: string; name: string; type: string; level: number; previousLevel?: number | null }>;
+  collector?: { lastSampleAt?: number | null; durationMs?: number | null; stale?: boolean };
   warmingUp?: boolean;
 };
 
@@ -102,6 +106,11 @@ function formatTrackingDate(value?: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatEvent(type: string, level: number, previousLevel?: number | null) {
+  if (type === "level_up") return `subiu do nível ${previousLevel ?? Math.max(0, level - 1)} para ${level}`;
+  return type === "joined" ? `entrou no servidor · nível ${level}` : `saiu do servidor · nível ${level}`;
 }
 
 function formatSampleDate(timestamp = 0) {
@@ -172,6 +181,7 @@ function ProgressChart({
       const fallback = player
         ? [
             {
+              playerKey: player.playerKey,
               name: player.name,
               accountName: player.accountName,
               sampledAt: player.lastSeen,
@@ -534,6 +544,12 @@ export default function Home() {
         />
       </section>
 
+      <section className="health-panel" aria-label="Saúde da coleta">
+        <span className={`health-dot${history?.collector?.stale ? " health-dot--bad" : ""}`} aria-hidden="true" />
+        <div><strong>{history?.collector?.stale ? "Coleta atrasada" : "Coleta histórica saudável"}</strong><small>Última amostra: {formatSampleDate(history?.collector?.lastSampleAt ?? 0)}{history?.collector?.durationMs ? ` · ${history.collector.durationMs} ms` : ""}</small></div>
+        <span>{history?.collector?.stale ? "atenção" : "operacional"}</span>
+      </section>
+
       <section className="history-panel" aria-labelledby="history-title">
         <div className="section-heading">
           <div>
@@ -591,7 +607,7 @@ export default function Home() {
                       {String(index + 1).padStart(2, "0")}
                     </span>
                     <span className="rank-player">
-                      <strong>{player.name}</strong>
+                      <a className="player-link" href={`/players/${player.playerKey}`}><strong>{player.name}</strong></a>
                       <small>{formatHours(player.hoursPlayed)}</small>
                     </span>
                     <span className="rank-level">
@@ -604,6 +620,11 @@ export default function Home() {
             </article>
           </div>
         )}
+      </section>
+
+      <section className="events-panel" aria-labelledby="events-title">
+        <div className="section-heading"><div><span className="section-kicker">LINHA DO TEMPO</span><h2 id="events-title">Eventos recentes</h2></div><span className="history-timestamp">últimos 30 eventos</span></div>
+        {(history?.events ?? []).length ? <ol className="event-list">{history?.events?.map((event) => <li key={`${event.playerKey}-${event.occurredAt}-${event.type}`}><time>{formatSampleDate(event.occurredAt)}</time><a className="player-link" href={`/players/${event.playerKey}`}>{event.name}</a><span>{formatEvent(event.type, event.level, event.previousLevel)}</span></li>)}</ol> : <p className="muted-copy">Os próximos eventos aparecerão após a coleta.</p>}
       </section>
 
       <section className="players-panel" aria-labelledby="players-title">
