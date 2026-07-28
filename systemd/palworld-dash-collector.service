@@ -1,0 +1,10 @@
+[Unit]
+Description=Collect Palworld Dash telemetry
+Wants=docker.service
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/palworld-dash
+ExecStartPre=/usr/bin/install -d -o 999 -g 987 -m 0775 /opt/palworld-dash/data
+ExecStart=/usr/bin/docker compose --profile collector run --rm -T palworld-collector
