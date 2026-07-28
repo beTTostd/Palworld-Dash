@@ -198,10 +198,10 @@ function ProgressChart({
         name: player?.name ?? seriesPoints[0]?.name ?? "Jogador",
         points: seriesPoints,
         markers: seriesPoints.filter(
-          (point, pointIndex, allPoints) =>
-            pointIndex === 0 ||
-            pointIndex === allPoints.length - 1 ||
-            point.level !== allPoints[pointIndex - 1]?.level,
+          (point, pointIndex, allPoints) => {
+            const step = Math.max(1, Math.ceil(allPoints.length / 48));
+            return pointIndex === 0 || pointIndex === allPoints.length - 1 || pointIndex % step === 0 || point.level !== allPoints[pointIndex - 1]?.level;
+          },
         ),
       };
     });

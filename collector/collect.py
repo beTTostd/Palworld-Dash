@@ -44,7 +44,7 @@ def initialize_schema(connection: sqlite3.Connection) -> None:
     if "play_seconds" not in columns: connection.execute("ALTER TABLE player_samples ADD COLUMN play_seconds INTEGER NOT NULL DEFAULT 0")
 
 def collect() -> dict[str, Any]:
-    started_at = int(time.time())
+    started_at = time.time_ns() // 1_000_000
     token = base64.b64encode(f"admin:{read_admin_password()}".encode()).decode("ascii")
     metrics, player_data = api_get("metrics", f"Basic {token}"), api_get("players", f"Basic {token}")
     players, sampled_at = player_data.get("players") or [], int(time.time())
