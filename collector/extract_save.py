@@ -92,7 +92,7 @@ def pal_name(character_id: str, nickname: str | None) -> str:
 
 
 def player_keys_by_name() -> dict[str, str]:
-    with sqlite3.connect(f"file:{DATABASE_PATH}?mode=ro", uri=True) as connection:
+    with sqlite3.connect(f"file:{DATABASE_PATH}?mode=ro&immutable=1", uri=True) as connection:
         rows = connection.execute("SELECT player_key,name FROM players").fetchall()
     counts: dict[str, int] = {}
     for _, name in rows:
