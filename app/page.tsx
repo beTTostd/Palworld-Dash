@@ -821,7 +821,7 @@ function UpdateControl() {
       const payload = (await response.json()) as UpdateStatus & { error?: string };
       if (!response.ok) throw new Error(payload.error || "Não foi possível verificar atualizações.");
       setStatus(payload);
-      setMessage(payload.updateAvailable ? "Uma atualização está disponível." : "O dashboard já está atualizado.");
+      setMessage(payload.updateAvailable ? "Uma atualização do Palworld está disponível." : "O Palworld já está atualizado.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível verificar atualizações.");
     } finally {
@@ -842,7 +842,7 @@ function UpdateControl() {
       if (!response.ok) throw new Error(payload.error || "Não foi possível iniciar a atualização.");
       setPassword("");
       setShowPassword(false);
-      setMessage(payload.started ? "Atualização iniciada. A página ficará disponível novamente após o healthcheck." : "O dashboard já está atualizado.");
+      setMessage(payload.started ? "Atualização do Palworld iniciada. Jogadores serão desconectados durante a reinicialização." : "O Palworld já está atualizado.");
       void checkForUpdate();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível iniciar a atualização.");
@@ -854,7 +854,7 @@ function UpdateControl() {
   return (
     <div className="update-control">
       <button className="refresh-button" type="button" onClick={() => void checkForUpdate()} disabled={checking || updating}>
-        {checking ? "Verificando" : "Verificar atualização"}
+        {checking ? "Verificando" : "Verificar atualização do jogo"}
       </button>
       {status?.updateAvailable ? (
         <button className="update-button" type="button" onClick={() => setShowPassword(true)} disabled={!status.updateEnabled || updating}>

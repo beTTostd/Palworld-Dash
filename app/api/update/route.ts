@@ -29,12 +29,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const status = await getUpdateStatus(true);
-    if (!status.updateAvailable || !status.latestCommit) return NextResponse.json({ ...status, started: false });
+    if (!status.updateAvailable) return NextResponse.json({ ...status, started: false });
     const updaterUrl = process.env.UPDATE_AGENT_URL || "http://host.docker.internal:3010";
-    const result = await fetch(`${updaterUrl}/deploy`, {
+    const result = await fetch(`${updaterUrl}/update-game`, {
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.UPDATER_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ commit: status.latestCommit }),
+
       signal: AbortSignal.timeout(5_000),
     });
     if (!result.ok) throw new Error("O agente recusou a atualização.");
