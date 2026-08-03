@@ -270,10 +270,9 @@ function ProgressChart({
   const positionFor = useCallback(
     (point: HistoricalPoint) => ({
       left:
-        8 +
-        (hourRange === 0
+        hourRange === 0
           ? 0
-          : ((point.hoursPlayed - MIN_OBSERVED_HOURS) / hourRange) * 84),
+          : ((point.hoursPlayed - MIN_OBSERVED_HOURS) / hourRange) * 100,
       bottom: 8 + ((point.level - minLevel) / levelRange) * 80,
     }),
     [hourRange, levelRange, minLevel],
