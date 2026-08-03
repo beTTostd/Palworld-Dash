@@ -71,8 +71,6 @@ type HistoryData = {
 
 const STATUS_REFRESH_INTERVAL = 15_000;
 const HISTORY_REFRESH_INTERVAL = 60_000;
-const MIN_OBSERVED_HOURS = 5 / 60;
-
 function formatUptime(totalSeconds = 0) {
   const days = Math.floor(totalSeconds / 86_400);
   const hours = Math.floor((totalSeconds % 86_400) / 3_600);
@@ -220,12 +218,7 @@ function ProgressChart({
         : [];
       const cleanedPoints =
         recorded.length > 0 ? removeIsolatedOutliers(recorded) : fallback;
-      const initialHours = cleanedPoints[0]?.hoursPlayed ?? 0;
-      const seriesPoints = cleanedPoints.map((point) => ({
-        ...point,
-        hoursPlayed:
-          MIN_OBSERVED_HOURS + Math.max(0, point.hoursPlayed - initialHours),
-      }));
+      const seriesPoints = cleanedPoints;
 
       return {
         key,
@@ -241,10 +234,9 @@ function ProgressChart({
   }, [players, points]);
   const allPoints = series.flatMap((playerSeries) => playerSeries.points);
   const maxHours = Math.max(
-    MIN_OBSERVED_HOURS,
+    1 / 12,
     ...allPoints.map((point) => point.hoursPlayed),
   );
-  const logHourRange = Math.log(maxHours / MIN_OBSERVED_HOURS);
   const levels =
     allPoints.length > 0
       ? allPoints.map((point) => point.level)
@@ -263,24 +255,13 @@ function ProgressChart({
     Math.round((maxLevel + minLevel) / 2),
     minLevel,
   ];
-  const hourTicks =
-    maxHours === MIN_OBSERVED_HOURS
-      ? [MIN_OBSERVED_HOURS]
-      : [MIN_OBSERVED_HOURS, Math.sqrt(MIN_OBSERVED_HOURS * maxHours), maxHours];
+  const hourTicks = [0, maxHours / 2, maxHours];
   const positionFor = useCallback(
-    (point: HistoricalPoint) => {
-      const observedHours = Math.max(point.hoursPlayed, MIN_OBSERVED_HOURS);
-      const hourPosition =
-        logHourRange === 0
-          ? 0
-          : Math.log(observedHours / MIN_OBSERVED_HOURS) / logHourRange;
-
-      return {
-        left: hourPosition * 100,
-        bottom: 8 + ((point.level - minLevel) / levelRange) * 80,
-      };
-    },
-    [levelRange, logHourRange, minLevel],
+    (point: HistoricalPoint) => ({
+      left: 8 + (point.hoursPlayed / maxHours) * 84,
+      bottom: 8 + ((point.level - minLevel) / levelRange) * 80,
+    }),
+    [levelRange, maxHours, minLevel],
   );
 
   const handlePointerMove = useCallback(
@@ -376,7 +357,7 @@ function ProgressChart({
         className="plot"
         ref={plotRef}
         role="img"
-        aria-label="Gráfico de linhas mostrando a progressão de nível por horas observadas em escala logarítmica"
+        aria-label="Gráfico de linhas mostrando a progressão de nível por horas observadas"
         onPointerMove={handlePointerMove}
         onPointerLeave={() => setHoveredPoint(null)}
       >
@@ -439,7 +420,7 @@ function ProgressChart({
           <span key={`${tick}-${index}`}>{formatHours(tick)}</span>
         ))}
       </div>
-      <div className="progress-chart__x-label">Tempo observado por jogador · escala logarítmica</div>
+      <div className="progress-chart__x-label">Horas observadas</div>
       <div className="chart-legend">
         {series.map((playerSeries) => (
           <span key={playerSeries.key}>
