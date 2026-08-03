@@ -89,6 +89,15 @@ function humanize(value: string) {
     .replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
+function normalizedRank(rank: number) {
+  return Math.max(0, Math.min(4, rank - 1));
+}
+
+function rankStars(rank: number) {
+  const filled = normalizedRank(rank);
+  return "★".repeat(filled) + "☆".repeat(4 - filled);
+}
+
 function eventLabel(event: PlayerEvent) {
   if (event.type === "level_up") return `Subiu para o nível ${event.level}`;
   if (event.type === "joined") return "Entrou no servidor";
@@ -191,11 +200,19 @@ export default function PlayerPage({ params }: { params: Promise<{ playerKey: st
                       )}
                       <span className="pal-card__index">{index + 1}</span>
                     </div>
-                    <div className="pal-card__identity"><strong>{pal.name}</strong><small>{humanize(pal.speciesId)}</small></div>
+                    <div className="pal-card__identity">
+                      <div className="pal-card__name-line">
+                        {pal.alpha ? <span className="pal-card__alpha-icon" aria-label="Pal Alpha" title="Pal Alpha">α</span> : null}
+                        <strong>{pal.name}</strong>
+                        <span className="pal-card__rank" aria-label={`${normalizedRank(pal.rank)} de 4 estrelas`} title={`Rank ${normalizedRank(pal.rank)} de 4`}>
+                          {rankStars(pal.rank)}
+                        </span>
+                      </div>
+                      <small>{humanize(pal.speciesId)}</small>
+                    </div>
                   </div>
                   <div className="pal-card__badges">
-                    <span>Nível {pal.level}</span><span>Rank {pal.rank}</span><span>{pal.gender}</span>
-                    {pal.alpha ? <span className="pal-badge pal-badge--alpha">Alpha</span> : null}
+                    <span>Nível {pal.level}</span><span>{pal.gender}</span>
                     {pal.lucky ? <span className="pal-badge pal-badge--lucky">Lucky</span> : null}
                     {pal.favorite ? <span className="pal-badge">★ Favorito</span> : null}
                   </div>

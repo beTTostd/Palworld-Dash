@@ -1122,6 +1122,10 @@ footer {
 .pal-card__portrait img { width: 88%; height: 88%; object-fit: contain; filter: drop-shadow(0 8px 13px rgba(0,0,0,.35)); }
 .pal-card__identity { display: flex; min-width: 0; flex-direction: column; }
 .pal-card__identity strong { overflow: hidden; font-size: .9rem; text-overflow: ellipsis; white-space: nowrap; }
+.pal-card__name-line { display: flex; min-width: 0; align-items: center; gap: 6px; }
+.pal-card__name-line strong { min-width: 0; }
+.pal-card__alpha-icon { display: inline-grid; width: 18px; height: 18px; flex: 0 0 auto; place-items: center; border: 1px solid rgba(255,119,109,.55); border-radius: 50%; background: rgba(255,119,109,.14); color: var(--danger); font: 900 .7rem ui-monospace,monospace; box-shadow: 0 0 10px rgba(255,119,109,.16); }
+.pal-card__rank { flex: 0 0 auto; color: var(--amber); font-size: .64rem; letter-spacing: -.05em; white-space: nowrap; }
 .pal-card__portrait .pal-card__index { position: absolute; top: 7px; left: 7px; }
 .profile-image-fallback { color: var(--muted); font: 800 .62rem ui-monospace,monospace; letter-spacing: .12em; }
 .equipment-grid .equipment-card { display: grid; grid-template-columns: 64px minmax(0,1fr); align-items: center; gap: 11px; }
