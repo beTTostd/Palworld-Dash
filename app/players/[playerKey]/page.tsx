@@ -217,8 +217,18 @@ export default function PlayerPage({ params }: { params: Promise<{ playerKey: st
                     {pal.lucky ? <span className="pal-badge pal-badge--lucky">Lucky</span> : null}
                   </div>
                   <div className="pal-card__stat"><span>HP</span><strong>{pal.hp.toLocaleString("pt-BR")}</strong></div>
-                  <div className="pal-card__skills"><small>Passivas</small>{pal.passives.length ? pal.passives.map((skill) => <span key={skill}>{humanize(skill)}</span>) : <span>—</span>}</div>
-                  <div className="pal-card__skills"><small>Habilidades</small>{pal.skills.map((skill) => <span key={skill}>{humanize(skill)}</span>)}</div>
+                  <div className="pal-card__skills">
+                    <small>Habilidades</small>
+                    <div className="pal-card__skill-list">
+                      {pal.skills.length ? pal.skills.map((skill) => <span key={skill}>{humanize(skill)}</span>) : <span>—</span>}
+                    </div>
+                  </div>
+                  <div className="pal-card__skills">
+                    <small>Passivas</small>
+                    <div className="pal-card__skill-list">
+                      {pal.passives.length ? pal.passives.map((skill) => <span key={skill}>{humanize(skill)}</span>) : <span>—</span>}
+                    </div>
+                  </div>
                 </article>
               ))}
             </div>
