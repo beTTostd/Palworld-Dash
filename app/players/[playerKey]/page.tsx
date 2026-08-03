@@ -98,6 +98,12 @@ function rankStars(rank: number) {
   return "★".repeat(filled) + "☆".repeat(4 - filled);
 }
 
+function genderSymbol(gender: string) {
+  if (gender === "Macho") return "♂";
+  if (gender === "Fêmea") return "♀";
+  return "—";
+}
+
 function eventLabel(event: PlayerEvent) {
   if (event.type === "level_up") return `Subiu para o nível ${event.level}`;
   if (event.type === "joined") return "Entrou no servidor";
@@ -213,7 +219,10 @@ export default function PlayerPage({ params }: { params: Promise<{ playerKey: st
                     </div>
                   </div>
                   <div className="pal-card__badges">
-                    <span>Nível {pal.level}</span><span>{pal.gender}</span>
+                    <span>Nível {pal.level}</span>
+                    <span className={`pal-gender pal-gender--${pal.gender === "Macho" ? "male" : pal.gender === "Fêmea" ? "female" : "unknown"}`} aria-label={pal.gender} title={pal.gender}>
+                      {genderSymbol(pal.gender)}
+                    </span>
                     {pal.lucky ? <span className="pal-badge pal-badge--lucky">Lucky</span> : null}
                   </div>
                   <div className="pal-card__stat"><span>HP</span><strong>{pal.hp.toLocaleString("pt-BR")}</strong></div>

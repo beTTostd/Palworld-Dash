@@ -1105,6 +1105,9 @@ footer {
 .pal-card__badges span,.pal-card__skills span { padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: .58rem; }
 .pal-card__badges .pal-badge--alpha { border-color: rgba(255,119,109,.35); color: var(--danger); }
 .pal-card__badges .pal-badge--lucky { border-color: rgba(245,201,106,.4); color: var(--amber); }
+.pal-card__badges .pal-gender { display: inline-grid; min-width: 24px; place-items: center; font-size: .78rem; font-weight: 900; }
+.pal-card__badges .pal-gender--male { border-color: rgba(83,170,255,.38); background: rgba(36,91,142,.16); color: #75baff; }
+.pal-card__badges .pal-gender--female { border-color: rgba(255,118,187,.38); background: rgba(137,42,89,.16); color: #ff8fc5; }
 .pal-card__stat { display: flex; align-items: baseline; justify-content: space-between; padding: 9px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .pal-card__stat span,.pal-card__skills small { color: var(--muted); font-size: .58rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .pal-card__stat strong { color: var(--aqua); font-size: .88rem; }
