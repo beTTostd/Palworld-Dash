@@ -1117,5 +1117,17 @@ footer {
 .equipment-grid strong { overflow: hidden; font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
 .equipment-grid small,.equipment-slot { color: var(--muted); font-size: .6rem; }
 .equipment-slot { font-family: ui-monospace,monospace; text-transform: uppercase; }
+.pal-card__head { display: block; }
+.pal-card__portrait { position: relative; display: grid !important; width: 100%; aspect-ratio: 1.25; place-items: center; overflow: hidden; margin-bottom: 12px; border: 1px solid rgba(68,226,193,.18); border-radius: 12px; background: radial-gradient(circle at 50% 45%,rgba(68,226,193,.16),rgba(8,17,22,.8) 70%); }
+.pal-card__portrait img { width: 88%; height: 88%; object-fit: contain; filter: drop-shadow(0 8px 13px rgba(0,0,0,.35)); }
+.pal-card__identity { display: flex; min-width: 0; flex-direction: column; }
+.pal-card__identity strong { overflow: hidden; font-size: .9rem; text-overflow: ellipsis; white-space: nowrap; }
+.pal-card__portrait .pal-card__index { position: absolute; top: 7px; left: 7px; }
+.profile-image-fallback { color: var(--muted); font: 800 .62rem ui-monospace,monospace; letter-spacing: .12em; }
+.equipment-grid .equipment-card { display: grid; grid-template-columns: 64px minmax(0,1fr); align-items: center; gap: 11px; }
+.equipment-card__image { display: grid; width: 64px; height: 64px; place-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: radial-gradient(circle,rgba(68,226,193,.12),rgba(8,17,22,.72)); }
+.equipment-card__image img { width: 90%; height: 90%; object-fit: contain; }
+.equipment-card__content { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
+.equipment-card__content strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 1000px) { .pal-team-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .profile-metric-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } .equipment-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 640px) { .player-profile__hero { align-items: flex-start; flex-direction: column; } .profile-panel { padding: 16px; } .profile-metric-grid,.pal-team-grid,.equipment-grid { grid-template-columns: 1fr; } .save-freshness { white-space: normal; } }

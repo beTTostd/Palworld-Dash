@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -40,6 +41,7 @@ type SaveProfile = {
     lucky: number;
   };
   team: Array<{
+    icon?: string | null;
     name: string;
     speciesId: string;
     level: number;
@@ -55,6 +57,7 @@ type SaveProfile = {
   equipment: Array<{
     category: string;
     slot: number;
+    icon?: string | null;
     name: string;
     itemId: string;
     durability: number;
@@ -179,7 +182,17 @@ export default function PlayerPage({ params }: { params: Promise<{ playerKey: st
             <div className="pal-team-grid">
               {save.team.map((pal, index) => (
                 <article className="pal-card" key={`${pal.speciesId}-${index}`}>
-                  <div className="pal-card__head"><span className="pal-card__index">{index + 1}</span><div><strong>{pal.name}</strong><small>{humanize(pal.speciesId)}</small></div></div>
+                  <div className="pal-card__head">
+                    <div className="pal-card__portrait">
+                      {pal.icon ? (
+                        <Image unoptimized src={pal.icon} alt={`Retrato de ${pal.name}`} width={96} height={96} />
+                      ) : (
+                        <span className="profile-image-fallback">PAL</span>
+                      )}
+                      <span className="pal-card__index">{index + 1}</span>
+                    </div>
+                    <div className="pal-card__identity"><strong>{pal.name}</strong><small>{humanize(pal.speciesId)}</small></div>
+                  </div>
                   <div className="pal-card__badges">
                     <span>Nível {pal.level}</span><span>Rank {pal.rank}</span><span>{pal.gender}</span>
                     {pal.alpha ? <span className="pal-badge pal-badge--alpha">Alpha</span> : null}
@@ -201,10 +214,19 @@ export default function PlayerPage({ params }: { params: Promise<{ playerKey: st
                 <h3>{category}</h3>
                 <div className="equipment-grid">
                   {items.map((item) => (
-                    <article key={`${category}-${item.slot}`}>
-                      <span className="equipment-slot">Slot {item.slot + 1}</span>
-                      <strong>{item.name}</strong>
-                      <small>{item.durability > 0 ? `Durabilidade ${item.durability.toLocaleString("pt-BR")}` : "Equipado"}{item.remainingBullets > 0 ? ` · ${item.remainingBullets} munições` : ""}</small>
+                    <article className="equipment-card" key={`${category}-${item.slot}`}>
+                      <div className="equipment-card__image">
+                        {item.icon ? (
+                          <Image unoptimized src={item.icon} alt={item.name} width={64} height={64} />
+                        ) : (
+                          <span className="profile-image-fallback">ITEM</span>
+                        )}
+                      </div>
+                      <div className="equipment-card__content">
+                        <span className="equipment-slot">Slot {item.slot + 1}</span>
+                        <strong>{item.name}</strong>
+                        <small>{item.durability > 0 ? `Durabilidade ${item.durability.toLocaleString("pt-BR")}` : "Equipado"}{item.remainingBullets > 0 ? ` · ${item.remainingBullets} munições` : ""}</small>
+                      </div>
                     </article>
                   ))}
                 </div>

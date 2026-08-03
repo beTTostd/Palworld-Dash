@@ -22,6 +22,10 @@ const playerRoute = await readFile(
   new URL("../app/api/players/[playerKey]/route.ts", import.meta.url),
   "utf8",
 );
+const profileIconRoute = await readFile(
+  new URL("../app/api/profile-icons/[kind]/[file]/route.ts", import.meta.url),
+  "utf8",
+);
 
 test("status API exposes GET only", () => {
   assert.match(route, /export async function GET/);
@@ -59,4 +63,12 @@ test("save profiles are joined by hashed key without exposing player GUIDs", () 
   assert.doesNotMatch(profileCollector, /["\x27]playerUid["\x27]/);
   assert.match(playerRoute, /profiles\.profiles\?\.\[playerKey\]/);
   assert.match(playerRoute, /private, max-age=60/);
+});
+
+test("profile icons only expose whitelisted WebP files", () => {
+  assert.match(profileIconRoute, /new Set\(\["pals", "items"\]\)/);
+  assert.match(profileIconRoute, /allowedFile\.test\(file\)/);
+  assert.match(profileIconRoute, /\/data\/profile-icons\/\$\{kind\}\/\$\{file\}/);
+  assert.doesNotMatch(profileIconRoute, /Content-Type.*application\/octet-stream/);
+  assert.match(profileIconRoute, /Content-Type.*image\/webp/);
 });

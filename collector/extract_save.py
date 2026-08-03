@@ -25,6 +25,7 @@ CHARACTER_CATALOG_PATH = Path(os.environ.get(
     "PALWORLD_CHARACTER_CATALOG",
     "/opt/palworld-save-parser/source/resources/game_data/characters.json",
 ))
+ITEM_CATALOG_PATH = CHARACTER_CATALOG_PATH.with_name("items.json")
 ZERO_GUID = "00000000-0000-0000-0000-000000000000"
 
 PAL_NAMES = {
@@ -35,9 +36,22 @@ PAL_NAMES = {
     "ThunderBird": "Beakon",
 }
 
+PAL_ICONS: dict[str, str] = {}
 try:
     character_catalog = json.loads(CHARACTER_CATALOG_PATH.read_text(encoding="utf-8"))
     PAL_NAMES.update({pal["asset"]: pal["name"] for pal in character_catalog.get("pals", [])})
+    PAL_ICONS.update({pal["asset"]: pal["icon"] for pal in character_catalog.get("pals", [])})
+except (OSError, ValueError, TypeError, KeyError):
+    pass
+
+ITEM_CATALOG: dict[str, dict[str, Any]] = {}
+try:
+    items_catalog = json.loads(ITEM_CATALOG_PATH.read_text(encoding="utf-8"))
+    ITEM_CATALOG.update({
+        item["asset"]: item
+        for item in items_catalog.get("items", [])
+        if item.get("asset") and item.get("icon")
+    })
 except (OSError, ValueError, TypeError, KeyError):
     pass
 
@@ -101,6 +115,27 @@ def pal_name(character_id: str, nickname: str | None) -> str:
     return PAL_NAMES.get(plain_id, humanize(plain_id))
 
 
+def publish_icon(icon_path: str | None) -> str | None:
+    if not icon_path:
+        return None
+    relative = Path(icon_path.removeprefix("/icons/"))
+    if len(relative.parts) != 2 or relative.parts[0] not in {"pals", "items"}:
+        return None
+    source = CHARACTER_CATALOG_PATH.parent / "icons" / relative
+    if not source.is_file() or source.suffix != ".webp":
+        return None
+    try:
+        destination = OUTPUT_PATH.parent / "profile-icons" / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        temporary_destination = destination.with_suffix(".tmp")
+        shutil.copy2(source, temporary_destination)
+        temporary_destination.chmod(0o644)
+        os.replace(temporary_destination, destination)
+    except OSError:
+        return None
+    return f"/api/profile-icons/{relative.as_posix()}"
+
+
 def player_keys_by_name() -> dict[str, str]:
     with sqlite3.connect(f"file:{DATABASE_PATH}?mode=ro&immutable=1", uri=True) as connection:
         rows = connection.execute("SELECT player_key,name FROM players").fetchall()
@@ -138,10 +173,12 @@ def extract_status_points(parameters: dict[str, Any]) -> list[dict[str, Any]]:
 
 def extract_pal(parameters: dict[str, Any]) -> dict[str, Any]:
     character_id = str(unwrap(parameters.get("CharacterID"), "Unknown"))
+    plain_id = character_id.removeprefix("BOSS_")
     gender = nested(parameters, "Gender", "value", "value", default="Unknown").split("::")[-1]
     return {
         "name": pal_name(character_id, unwrap(parameters.get("NickName"))),
-        "speciesId": character_id.removeprefix("BOSS_"),
+        "speciesId": plain_id,
+        "icon": publish_icon(PAL_ICONS.get(plain_id)),
         "level": int(nested(parameters, "Level", "value", "value", default=1)),
         "gender": "Macho" if gender == "Male" else "Fêmea" if gender == "Female" else "—",
         "rank": int(nested(parameters, "Rank", "value", "value", default=1)),
@@ -177,11 +214,13 @@ def extract_equipment(world: dict[str, Any], container_ids: dict[str, str]) -> l
                 continue
             dynamic_id = nested(item, "dynamic_id", "local_id_in_created_world")
             dynamic = dynamic_items.get(dynamic_id, {})
+            catalog_item = ITEM_CATALOG.get(static_id, {})
             result.append({
                 "category": category,
                 "slot": int(raw.get("slot_index") or 0),
-                "name": humanize(static_id),
+                "name": catalog_item.get("name") or humanize(static_id),
                 "itemId": static_id,
+                "icon": publish_icon(catalog_item.get("icon")),
                 "durability": round(float(dynamic.get("durability") or 0)),
                 "remainingBullets": int(dynamic.get("remaining_bullets") or 0),
             })
