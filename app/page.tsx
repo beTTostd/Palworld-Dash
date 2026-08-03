@@ -71,6 +71,7 @@ type HistoryData = {
 
 const STATUS_REFRESH_INTERVAL = 15_000;
 const HISTORY_REFRESH_INTERVAL = 60_000;
+const MIN_OBSERVED_HOURS = 10 / 60;
 function formatUptime(totalSeconds = 0) {
   const days = Math.floor(totalSeconds / 86_400);
   const hours = Math.floor((totalSeconds % 86_400) / 3_600);
@@ -218,7 +219,12 @@ function ProgressChart({
         : [];
       const cleanedPoints =
         recorded.length > 0 ? removeIsolatedOutliers(recorded) : fallback;
-      const seriesPoints = cleanedPoints;
+      const initialHours = cleanedPoints[0]?.hoursPlayed ?? 0;
+      const seriesPoints = cleanedPoints.map((point) => ({
+        ...point,
+        hoursPlayed:
+          MIN_OBSERVED_HOURS + Math.max(0, point.hoursPlayed - initialHours),
+      }));
 
       return {
         key,
@@ -234,7 +240,7 @@ function ProgressChart({
   }, [players, points]);
   const allPoints = series.flatMap((playerSeries) => playerSeries.points);
   const maxHours = Math.max(
-    1 / 12,
+    MIN_OBSERVED_HOURS,
     ...allPoints.map((point) => point.hoursPlayed),
   );
   const levels =
@@ -255,13 +261,22 @@ function ProgressChart({
     Math.round((maxLevel + minLevel) / 2),
     minLevel,
   ];
-  const hourTicks = [0, maxHours / 2, maxHours];
+  const hourRange = maxHours - MIN_OBSERVED_HOURS;
+  const hourTicks = [
+    MIN_OBSERVED_HOURS,
+    MIN_OBSERVED_HOURS + hourRange / 2,
+    maxHours,
+  ];
   const positionFor = useCallback(
     (point: HistoricalPoint) => ({
-      left: 8 + (point.hoursPlayed / maxHours) * 84,
+      left:
+        8 +
+        (hourRange === 0
+          ? 0
+          : ((point.hoursPlayed - MIN_OBSERVED_HOURS) / hourRange) * 84),
       bottom: 8 + ((point.level - minLevel) / levelRange) * 80,
     }),
-    [levelRange, maxHours, minLevel],
+    [hourRange, levelRange, minLevel],
   );
 
   const handlePointerMove = useCallback(
