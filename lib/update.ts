@@ -41,7 +41,7 @@ export async function getUpdateStatus(force = false): Promise<UpdateStatus> {
     updateAvailable: Boolean(payload.sha && deployed && payload.sha !== deployed),
     checkedAt: new Date(now).toISOString(),
     cacheExpiresAt: new Date(now + CACHE_MS).toISOString(),
-    updateEnabled: Boolean(process.env.UPDATE_PASSWORD_HASH && process.env.UPDATER_TOKEN),
+    updateEnabled: Boolean(process.env.UPDATER_TOKEN),
   };
   cacheValidUntil = now + CACHE_MS;
   return cachedStatus;

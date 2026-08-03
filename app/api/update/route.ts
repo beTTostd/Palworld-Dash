@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   if (!allowAttempt(address)) return NextResponse.json({ error: "Muitas tentativas. Aguarde 15 minutos." }, { status: 429 });
 
   const body = (await request.json().catch(() => null)) as { password?: unknown } | null;
-  if (typeof body?.password !== "string" || !validUpdatePassword(body.password)) {
+  if (typeof body?.password !== "string" || !(await validUpdatePassword(body.password))) {
     return NextResponse.json({ error: "Senha inválida." }, { status: 401 });
   }
 

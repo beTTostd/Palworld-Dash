@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { timingSafeEqual } from "node:crypto";
 
 const CONFIG_PATH = "/palworld/PalWorldSettings.ini";
 const API_URL = process.env.PALWORLD_API_URL ?? "http://host.docker.internal:8212";
@@ -46,3 +47,10 @@ export async function getDashboardSnapshot() {
 }
 
 export const dashboardCacheSeconds = CACHE_TTL_MS / 1_000;
+
+export async function validPalworldAdminPassword(candidate: string) {
+  const configured = await password();
+  const actual = Buffer.from(candidate);
+  const expected = Buffer.from(configured);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
