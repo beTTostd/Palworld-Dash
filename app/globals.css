@@ -1068,3 +1068,12 @@ footer {
 .muted-copy{color:var(--muted);font-size:.68rem}
 .event-list{display:grid;gap:0;margin:0;padding:0;list-style:none}.event-list li{display:grid;grid-template-columns:140px minmax(100px,.5fr) 1fr;gap:12px;padding:13px 0;border-top:1px solid var(--line);font-size:.75rem}.event-list time{color:var(--muted);font-family:ui-monospace,monospace;font-size:.64rem}.player-link{color:var(--text);text-decoration:none}.player-link:hover{color:var(--aqua);text-decoration:underline}
 @media (max-width:580px){.event-list li{grid-template-columns:1fr;gap:5px}}
+
+.update-control { position: relative; display: inline-flex; align-items: center; gap: 8px; }
+.update-button { min-height: 38px; padding: 0 16px; border: 1px solid rgba(68, 226, 193, .65); border-radius: 999px; background: var(--aqua-soft); color: var(--aqua); font: inherit; font-size: .78rem; font-weight: 800; cursor: pointer; }
+.update-button:disabled, .refresh-button:disabled { cursor: wait; opacity: .58; }
+.update-message { position: absolute; top: calc(100% + 8px); right: 0; width: 240px; color: var(--muted); font-size: .66rem; text-align: right; }
+.update-dialog { position: absolute; z-index: 10; top: calc(100% + 12px); right: 0; width: 260px; padding: 14px; border: 1px solid var(--line-bright); border-radius: 12px; background: var(--surface-raised); box-shadow: 0 16px 42px rgba(0,0,0,.42); }
+.update-dialog label { display: grid; gap: 7px; color: var(--muted); font-size: .7rem; font-weight: 700; }
+.update-dialog input { width: 100%; min-height: 36px; border: 1px solid var(--line-bright); border-radius: 8px; background: var(--bg); color: var(--text); padding: 0 9px; }
+.update-dialog > div { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }

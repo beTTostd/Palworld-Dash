@@ -10,6 +10,9 @@ services:
       - "3000:3000"
     environment:
       PALWORLD_API_URL: http://host.docker.internal:8212
+      UPDATE_AGENT_URL: http://host.docker.internal:3010
+      UPDATE_PASSWORD_HASH: ${UPDATE_PASSWORD_HASH:-}
+      UPDATER_TOKEN: ${UPDATER_TOKEN:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -43,6 +46,9 @@ services:
     user: "999:987"
     environment:
       PALWORLD_API_URL: http://host.docker.internal:8212
+      UPDATE_AGENT_URL: http://host.docker.internal:3010
+      UPDATE_PASSWORD_HASH: ${UPDATE_PASSWORD_HASH:-}
+      UPDATER_TOKEN: ${UPDATER_TOKEN:-}
       PALWORLD_CONFIG_PATH: /palworld/PalWorldSettings.ini
       PALWORLD_DATABASE_PATH: /data/palworld.db
       COLLECTION_INTERVAL_SECONDS: "300"

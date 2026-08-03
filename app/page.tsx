@@ -538,6 +538,7 @@ export default function Home() {
                 : "Coleta histórica saudável"}
             </span>
           </span>
+          <UpdateControl />
           <span className="readonly-badge">
             <span aria-hidden="true">◉</span> Somente leitura
           </span>
@@ -795,3 +796,85 @@ export default function Home() {
     </main>
   );
 }
+type UpdateStatus = {
+  deployedCommit: string | null;
+  latestCommit: string | null;
+  updateAvailable: boolean;
+  checkedAt: string;
+  cacheExpiresAt: string;
+  updateEnabled: boolean;
+};
+
+function UpdateControl() {
+  const [status, setStatus] = useState<UpdateStatus | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [updating, setUpdating] = useState(false);
+
+  const checkForUpdate = useCallback(async () => {
+    setChecking(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/update", { cache: "no-store" });
+      const payload = (await response.json()) as UpdateStatus & { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Não foi possível verificar atualizações.");
+      setStatus(payload);
+      setMessage(payload.updateAvailable ? "Uma atualização está disponível." : "O dashboard já está atualizado.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível verificar atualizações.");
+    } finally {
+      setChecking(false);
+    }
+  }, []);
+
+  const startUpdate = useCallback(async () => {
+    setUpdating(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const payload = (await response.json()) as { error?: string; started?: boolean };
+      if (!response.ok) throw new Error(payload.error || "Não foi possível iniciar a atualização.");
+      setPassword("");
+      setShowPassword(false);
+      setMessage(payload.started ? "Atualização iniciada. A página ficará disponível novamente após o healthcheck." : "O dashboard já está atualizado.");
+      void checkForUpdate();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível iniciar a atualização.");
+    } finally {
+      setUpdating(false);
+    }
+  }, [checkForUpdate, password]);
+
+  return (
+    <div className="update-control">
+      <button className="refresh-button" type="button" onClick={() => void checkForUpdate()} disabled={checking || updating}>
+        {checking ? "Verificando" : "Verificar atualização"}
+      </button>
+      {status?.updateAvailable ? (
+        <button className="update-button" type="button" onClick={() => setShowPassword(true)} disabled={!status.updateEnabled || updating}>
+          Atualizar
+        </button>
+      ) : null}
+      {message ? <span className="update-message" role="status">{message}</span> : null}
+      {showPassword ? (
+        <div className="update-dialog" role="dialog" aria-modal="true" aria-label="Confirmar atualização">
+          <label>
+            Senha de atualização
+            <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          </label>
+          <div>
+            <button className="refresh-button" type="button" onClick={() => setShowPassword(false)} disabled={updating}>Cancelar</button>
+            <button className="update-button" type="button" onClick={() => void startUpdate()} disabled={!password || updating}>{updating ? "Iniciando" : "Confirmar"}</button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
