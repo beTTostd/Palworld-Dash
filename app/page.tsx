@@ -243,24 +243,10 @@ function ProgressChart({
     MIN_OBSERVED_HOURS,
     ...allPoints.map((point) => point.hoursPlayed),
   );
-  const levels =
-    allPoints.length > 0
-      ? allPoints.map((point) => point.level)
-      : players.map((player) => player.level);
-  const observedMinLevel = Math.min(...levels);
-  const observedMaxLevel = Math.max(...levels);
-  const levelPadding =
-    observedMaxLevel === observedMinLevel
-      ? 1
-      : Math.max(1, Math.ceil((observedMaxLevel - observedMinLevel) * 0.12));
-  const minLevel = Math.max(0, observedMinLevel - levelPadding);
-  const maxLevel = Math.max(minLevel + 1, observedMaxLevel + levelPadding);
+  const minLevel = 1;
+  const maxLevel = 80;
   const levelRange = maxLevel - minLevel;
-  const levelTicks = [
-    maxLevel,
-    Math.round((maxLevel + minLevel) / 2),
-    minLevel,
-  ];
+  const levelTicks = [maxLevel, 40, minLevel];
   const hourRange = maxHours - MIN_OBSERVED_HOURS;
   const hourTicks = [
     MIN_OBSERVED_HOURS,
