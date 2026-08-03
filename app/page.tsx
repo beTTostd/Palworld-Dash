@@ -2,6 +2,7 @@
 
 import {
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -70,6 +71,7 @@ type HistoryData = {
 
 const STATUS_REFRESH_INTERVAL = 15_000;
 const HISTORY_REFRESH_INTERVAL = 60_000;
+const MIN_OBSERVED_HOURS = 5 / 60;
 
 function formatUptime(totalSeconds = 0) {
   const days = Math.floor(totalSeconds / 86_400);
@@ -123,6 +125,25 @@ function formatSampleDate(timestamp = 0) {
   }).format(new Date(timestamp * 1_000));
 }
 
+function removeIsolatedOutliers(points: HistoricalPoint[]) {
+  if (points.length < 3) return points;
+
+  return points.filter((point, index, allPoints) => {
+    if (index === 0) {
+      const nextBaseline = Math.min(allPoints[1].level, allPoints[2].level);
+      return nextBaseline - point.level < 5;
+    }
+    if (index === allPoints.length - 1) return true;
+
+    const previousLevel = allPoints[index - 1].level;
+    const nextLevel = allPoints[index + 1].level;
+    const lowerNeighbor = Math.min(previousLevel, nextLevel);
+    const upperNeighbor = Math.max(previousLevel, nextLevel);
+
+    return point.level >= lowerNeighbor && point.level <= upperNeighbor;
+  });
+}
+
 function StatCard({
   label,
   value,
@@ -152,6 +173,13 @@ function ProgressChart({
 }) {
   const plotRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [hoveredPoint, setHoveredPoint] = useState<{
+    point: HistoricalPoint;
+    playerName: string;
+    playerIndex: number;
+    left: number;
+    bottom: number;
+  } | null>(null);
   const series = useMemo(() => {
     const keyFor = (name: string, accountName: string) =>
       `${name}\u0000${accountName}`;
@@ -190,28 +218,33 @@ function ProgressChart({
             },
           ]
         : [];
-      const seriesPoints = recorded.length > 0 ? recorded : fallback;
+      const cleanedPoints =
+        recorded.length > 0 ? removeIsolatedOutliers(recorded) : fallback;
+      const initialHours = cleanedPoints[0]?.hoursPlayed ?? 0;
+      const seriesPoints = cleanedPoints.map((point) => ({
+        ...point,
+        hoursPlayed:
+          MIN_OBSERVED_HOURS + Math.max(0, point.hoursPlayed - initialHours),
+      }));
 
       return {
         key,
         index,
         name: player?.name ?? seriesPoints[0]?.name ?? "Jogador",
         points: seriesPoints,
-        markers: seriesPoints.filter(
-          (point, pointIndex, allPoints) => {
-            const step = Math.max(1, Math.ceil(allPoints.length / 48));
-            return pointIndex === 0 || pointIndex === allPoints.length - 1 || pointIndex % step === 0 || point.level !== allPoints[pointIndex - 1]?.level;
-          },
+        levelUps: seriesPoints.filter(
+          (point, pointIndex, allPoints) =>
+            pointIndex > 0 && point.level > allPoints[pointIndex - 1].level,
         ),
       };
     });
   }, [players, points]);
   const allPoints = series.flatMap((playerSeries) => playerSeries.points);
   const maxHours = Math.max(
-    1 / 12,
-    ...players.map((player) => player.hoursPlayed),
+    MIN_OBSERVED_HOURS,
     ...allPoints.map((point) => point.hoursPlayed),
   );
+  const logHourRange = Math.log(maxHours / MIN_OBSERVED_HOURS);
   const levels =
     allPoints.length > 0
       ? allPoints.map((point) => point.level)
@@ -230,13 +263,64 @@ function ProgressChart({
     Math.round((maxLevel + minLevel) / 2),
     minLevel,
   ];
-  const hourTicks = [0, maxHours / 2, maxHours];
+  const hourTicks =
+    maxHours === MIN_OBSERVED_HOURS
+      ? [MIN_OBSERVED_HOURS]
+      : [MIN_OBSERVED_HOURS, Math.sqrt(MIN_OBSERVED_HOURS * maxHours), maxHours];
   const positionFor = useCallback(
-    (point: HistoricalPoint) => ({
-      left: 8 + (point.hoursPlayed / maxHours) * 84,
-      bottom: 8 + ((point.level - minLevel) / levelRange) * 80,
-    }),
-    [levelRange, maxHours, minLevel],
+    (point: HistoricalPoint) => {
+      const observedHours = Math.max(point.hoursPlayed, MIN_OBSERVED_HOURS);
+      const hourPosition =
+        logHourRange === 0
+          ? 0
+          : Math.log(observedHours / MIN_OBSERVED_HOURS) / logHourRange;
+
+      return {
+        left: hourPosition * 100,
+        bottom: 8 + ((point.level - minLevel) / levelRange) * 80,
+      };
+    },
+    [levelRange, logHourRange, minLevel],
+  );
+
+  const handlePointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const pointerX = event.clientX - bounds.left;
+      const pointerY = event.clientY - bounds.top;
+      let nearest:
+        | {
+            point: HistoricalPoint;
+            playerName: string;
+            playerIndex: number;
+            left: number;
+            bottom: number;
+          }
+        | undefined;
+      let nearestDistance = 32;
+
+      for (const playerSeries of series) {
+        for (const point of playerSeries.points) {
+          const position = positionFor(point);
+          const pointX = (position.left / 100) * bounds.width;
+          const pointY = bounds.height - (position.bottom / 100) * bounds.height;
+          const distance = Math.hypot(pointerX - pointX, pointerY - pointY);
+
+          if (distance < nearestDistance) {
+            nearestDistance = distance;
+            nearest = {
+              point,
+              playerName: playerSeries.name,
+              playerIndex: playerSeries.index,
+              ...position,
+            };
+          }
+        }
+      }
+
+      setHoveredPoint(nearest ?? null);
+    },
+    [positionFor, series],
   );
 
   useEffect(() => {
@@ -292,7 +376,9 @@ function ProgressChart({
         className="plot"
         ref={plotRef}
         role="img"
-        aria-label="Gráfico de linhas mostrando a progressão de nível por horas observadas de cada jogador"
+        aria-label="Gráfico de linhas mostrando a progressão de nível por horas observadas em escala logarítmica"
+        onPointerMove={handlePointerMove}
+        onPointerLeave={() => setHoveredPoint(null)}
       >
         <div className="plot__grid" aria-hidden="true" />
         <canvas className="plot__lines" ref={canvasRef} aria-hidden="true" />
@@ -306,12 +392,12 @@ function ProgressChart({
           </span>
         ))}
         {series.flatMap((playerSeries) =>
-          playerSeries.markers.map((point) => {
+          playerSeries.levelUps.map((point) => {
             const position = positionFor(point);
             return (
               <span
-                className="plot-point"
-                key={`${playerSeries.key}-${point.sampledAt}`}
+                className="level-up-marker"
+                key={`level-up-${playerSeries.key}-${point.sampledAt}`}
                 style={
                   {
                     left: `${position.left}%`,
@@ -319,27 +405,41 @@ function ProgressChart({
                     "--point-index": playerSeries.index,
                   } as CSSProperties
                 }
-                tabIndex={0}
-                aria-label={`${playerSeries.name}: nível ${point.level}, ${formatHours(point.hoursPlayed)}, em ${formatSampleDate(point.sampledAt)}`}
-              >
-                <span className="plot-point__core" aria-hidden="true" />
-                <span className="plot-point__tooltip">
-                  <strong>{playerSeries.name}</strong>
-                  <span>Nível {point.level}</span>
-                  <span>{formatHours(point.hoursPlayed)}</span>
-                  <span>{formatSampleDate(point.sampledAt)}</span>
-                </span>
-              </span>
+                aria-hidden="true"
+              />
             );
           }),
         )}
+        {hoveredPoint ? (
+          <span
+            className={`plot-tooltip${
+              hoveredPoint.left < 24
+                ? " plot-tooltip--left"
+                : hoveredPoint.left > 76
+                  ? " plot-tooltip--right"
+                  : ""
+            }`}
+            style={
+              {
+                left: `${hoveredPoint.left}%`,
+                bottom: `${hoveredPoint.bottom}%`,
+                "--point-index": hoveredPoint.playerIndex,
+              } as CSSProperties
+            }
+          >
+            <strong>{hoveredPoint.playerName}</strong>
+            <span>Nível {hoveredPoint.point.level}</span>
+            <span>{formatHours(hoveredPoint.point.hoursPlayed)}</span>
+            <span>{formatSampleDate(hoveredPoint.point.sampledAt)}</span>
+          </span>
+        ) : null}
       </div>
       <div className="progress-chart__x-axis" aria-hidden="true">
         {hourTicks.map((tick, index) => (
           <span key={`${tick}-${index}`}>{formatHours(tick)}</span>
         ))}
       </div>
-      <div className="progress-chart__x-label">Horas observadas</div>
+      <div className="progress-chart__x-label">Tempo observado por jogador · escala logarítmica</div>
       <div className="chart-legend">
         {series.map((playerSeries) => (
           <span key={playerSeries.key}>
@@ -445,6 +545,18 @@ export default function Home() {
         </a>
 
         <div className="topbar__actions">
+          <span
+            className={`collector-status${history?.collector?.stale ? " collector-status--bad" : ""}`}
+            role="status"
+            title={`Última amostra: ${formatSampleDate(history?.collector?.lastSampleAt ?? 0)}`}
+          >
+            <span className="health-dot" aria-hidden="true" />
+            <span className="collector-status__text">
+              {history?.collector?.stale
+                ? "Coleta atrasada"
+                : "Coleta histórica saudável"}
+            </span>
+          </span>
           <span className="readonly-badge">
             <span aria-hidden="true">◉</span> Somente leitura
           </span>
@@ -544,12 +656,6 @@ export default function Home() {
         />
       </section>
 
-      <section className="health-panel" aria-label="Saúde da coleta">
-        <span className={`health-dot${history?.collector?.stale ? " health-dot--bad" : ""}`} aria-hidden="true" />
-        <div><strong>{history?.collector?.stale ? "Coleta atrasada" : "Coleta histórica saudável"}</strong><small>Última amostra: {formatSampleDate(history?.collector?.lastSampleAt ?? 0)}{history?.collector?.durationMs ? ` · ${history.collector.durationMs} ms` : ""}</small></div>
-        <span>{history?.collector?.stale ? "atenção" : "operacional"}</span>
-      </section>
-
       <section className="history-panel" aria-labelledby="history-title">
         <div className="section-heading">
           <div>
@@ -622,11 +728,6 @@ export default function Home() {
         )}
       </section>
 
-      <section className="events-panel" aria-labelledby="events-title">
-        <div className="section-heading"><div><span className="section-kicker">LINHA DO TEMPO</span><h2 id="events-title">Eventos recentes</h2></div><span className="history-timestamp">últimos 30 eventos</span></div>
-        {(history?.events ?? []).length ? <ol className="event-list">{history?.events?.map((event) => <li key={`${event.playerKey}-${event.occurredAt}-${event.type}`}><time>{formatSampleDate(event.occurredAt)}</time><a className="player-link" href={`/players/${event.playerKey}`}>{event.name}</a><span>{formatEvent(event.type, event.level, event.previousLevel)}</span></li>)}</ol> : <p className="muted-copy">Os próximos eventos aparecerão após a coleta.</p>}
-      </section>
-
       <section className="players-panel" aria-labelledby="players-title">
         <div className="section-heading">
           <div>
@@ -697,6 +798,11 @@ export default function Home() {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="events-panel" aria-labelledby="events-title">
+        <div className="section-heading"><div><span className="section-kicker">LINHA DO TEMPO</span><h2 id="events-title">Eventos recentes</h2></div><span className="history-timestamp">últimos 30 eventos</span></div>
+        {(history?.events ?? []).length ? <ol className="event-list">{history?.events?.map((event) => <li key={`${event.playerKey}-${event.occurredAt}-${event.type}`}><time>{formatSampleDate(event.occurredAt)}</time><a className="player-link" href={`/players/${event.playerKey}`}>{event.name}</a><span>{formatEvent(event.type, event.level, event.previousLevel)}</span></li>)}</ol> : <p className="muted-copy">Os próximos eventos aparecerão após a coleta.</p>}
       </section>
 
       <footer>
