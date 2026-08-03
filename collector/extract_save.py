@@ -21,6 +21,10 @@ from palsav.paltypes import PALWORLD_CUSTOM_PROPERTIES, PALWORLD_TYPE_HINTS
 SAVE_ROOT = Path(os.environ.get("PALWORLD_SAVE_ROOT", "/palworld-save"))
 DATABASE_PATH = Path(os.environ.get("PALWORLD_DATABASE_PATH", "/data/palworld.db"))
 OUTPUT_PATH = Path(os.environ.get("PALWORLD_PROFILE_PATH", "/data/player_profiles.json"))
+CHARACTER_CATALOG_PATH = Path(os.environ.get(
+    "PALWORLD_CHARACTER_CATALOG",
+    "/opt/palworld-save-parser/source/resources/game_data/characters.json",
+))
 ZERO_GUID = "00000000-0000-0000-0000-000000000000"
 
 PAL_NAMES = {
@@ -30,6 +34,12 @@ PAL_NAMES = {
     "SamuraiDog": "Pupperai",
     "ThunderBird": "Beakon",
 }
+
+try:
+    character_catalog = json.loads(CHARACTER_CATALOG_PATH.read_text(encoding="utf-8"))
+    PAL_NAMES.update({pal["asset"]: pal["name"] for pal in character_catalog.get("pals", [])})
+except (OSError, ValueError, TypeError, KeyError):
+    pass
 
 STATUS_NAMES = {
     "最大HP": "Vida",

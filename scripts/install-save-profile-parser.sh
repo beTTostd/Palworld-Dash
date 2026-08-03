@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+if [[ $EUID -ne 0 ]]; then
+  echo "Run this installer as root." >&2
+  exit 1
+fi
+
+if ! dpkg-query -W -f='${Status}' git python3-venv python3-dev g++ > /dev/null 2>&1; then
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y git python3-venv python3-dev g++
+fi
+
 parser_root="/opt/palworld-save-parser"
 source_dir="$parser_root/source"
 venv_dir="$parser_root/venv"
@@ -8,6 +18,7 @@ parser_repository="https://github.com/deafdudecomputers/PalworldSaveTools.git"
 parser_commit="c5e42c8adb5f81720adec990307058b11360495a"
 
 install -d -m 0755 "$parser_root"
+install -d -o palworld -g palworld -m 0775 /opt/palworld-dash/data
 if [[ ! -d "$source_dir/.git" ]]; then
   git clone --filter=blob:none --no-checkout "$parser_repository" "$source_dir"
 fi
