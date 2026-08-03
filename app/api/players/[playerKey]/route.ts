@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import { promisify } from "node:util";
 import { NextResponse } from "next/server";
 export const runtime = "nodejs";
@@ -11,7 +12,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ playerKey:
   const sql = `SELECT json_object('player',(SELECT json_object('name',name,'accountName',account_name,'level',level,'hoursPlayed',ROUND(play_seconds/3600.0,2),'firstSeen',first_seen,'lastSeen',last_seen) FROM players WHERE player_key='${playerKey}'),'events',(SELECT json_group_array(json_object('occurredAt',occurred_at,'type',event_type,'level',level,'previousLevel',previous_level)) FROM player_events WHERE player_key='${playerKey}' ORDER BY occurred_at DESC LIMIT 50),'progress',(SELECT json_group_array(json_object('sampledAt',sampled_at,'level',level,'hoursPlayed',ROUND(play_seconds/3600.0,4))) FROM player_samples WHERE player_key='${playerKey}' ORDER BY sampled_at ASC)) AS payload;`;
   const result = await execFileAsync("sqlite3", ["-readonly", "-json", db, sql], { timeout: 3_000, encoding: "utf8" });
   const encoded = (JSON.parse(result.stdout || "[]")[0] as { payload?: string } | undefined)?.payload;
-  const payload = encoded ? JSON.parse(encoded) as { player?: unknown } : null;
-  return payload?.player ? NextResponse.json(payload) : NextResponse.json({ error: "Jogador não encontrado" }, { status: 404 });
+  const payload = encoded ? JSON.parse(encoded) as { player?: unknown; [key: string]: unknown } : null;
+  if (!payload?.player) return NextResponse.json({ error: "Jogador não encontrado" }, { status: 404 });
+  try {
+   const profiles = JSON.parse(await readFile("/data/player_profiles.json", "utf8")) as { profiles?: Record<string, unknown> };
+   payload.saveProfile = profiles.profiles?.[playerKey] ?? null;
+  } catch {
+   payload.saveProfile = null;
+  }
+  return NextResponse.json(payload, { headers: { "Cache-Control": "private, max-age=60" } });
  } catch { return NextResponse.json({ error: "Histórico indisponível" }, { status: 503 }); }
 }

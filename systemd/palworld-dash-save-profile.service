@@ -1,0 +1,20 @@
+[Unit]
+Description=Extract privacy-safe Palworld player profiles from save snapshots
+After=palworld.service
+
+[Service]
+Type=oneshot
+User=palworld
+Group=palworld
+Environment=PALWORLD_SAVE_ROOT=/opt/palworld/server/Pal/Saved/SaveGames/0/E942AFEE13614343B1FDC64F849281FE
+Environment=PALWORLD_DATABASE_PATH=/opt/palworld-dash/data/palworld.db
+Environment=PALWORLD_PROFILE_PATH=/opt/palworld-dash/data/player_profiles.json
+ExecStart=/opt/palworld-save-parser/venv/bin/python /opt/palworld-dash/collector/extract_save.py
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadOnlyPaths=/opt/palworld/server/Pal/Saved/SaveGames
+ReadWritePaths=/opt/palworld-dash/data

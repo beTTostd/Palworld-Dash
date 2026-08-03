@@ -14,6 +14,14 @@ const collector = await readFile(
   new URL("../collector/collect.py", import.meta.url),
   "utf8",
 );
+const profileCollector = await readFile(
+  new URL("../collector/extract_save.py", import.meta.url),
+  "utf8",
+);
+const playerRoute = await readFile(
+  new URL("../app/api/players/[playerKey]/route.ts", import.meta.url),
+  "utf8",
+);
 
 test("status API exposes GET only", () => {
   assert.match(route, /export async function GET/);
@@ -43,4 +51,12 @@ test("collector hashes identifiers and stores a safe player projection", () => {
   assert.doesNotMatch(collector, /player\.get\("location_[xy]"\)/);
   assert.match(collector, /player\.get\("level"\)/);
   assert.match(collector, /player\.get\("ping"\)/);
+});
+
+
+test("save profiles are joined by hashed key without exposing player GUIDs", () => {
+  assert.match(profileCollector, /key_by_name\.get\(player_name\)/);
+  assert.doesNotMatch(profileCollector, /["\x27]playerUid["\x27]/);
+  assert.match(playerRoute, /profiles\.profiles\?\.\[playerKey\]/);
+  assert.match(playerRoute, /private, max-age=60/);
 });
