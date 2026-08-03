@@ -1113,8 +1113,8 @@ footer {
 .pal-card__stat strong { color: var(--aqua); font-size: .88rem; }
 .pal-card__skills { margin-top: 10px; }
 .pal-card__skills small { display: block; margin-bottom: 5px; }
-.pal-card__skill-list { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 3px; scrollbar-width: thin; scrollbar-color: var(--line-bright) transparent; }
-.pal-card__skill-list span { flex: 0 0 auto; white-space: nowrap; }
+.pal-card__skill-list { display: grid; justify-items: start; gap: 5px; }
+.pal-card__skill-list span { max-width: 100%; white-space: normal; }
 .equipment-group + .equipment-group { margin-top: 20px; }
 .equipment-group h3 { margin: 0 0 10px; color: var(--muted); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; }
 .equipment-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 9px; }
